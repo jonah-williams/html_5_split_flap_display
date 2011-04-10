@@ -16,8 +16,7 @@
 		<script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
 	<![endif]-->
 	<script type="text/javascript" charset="utf-8">
-	var SYMBOL_SET = ['A', 'B', 'C', 'D', 'E', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
-	var FLAP_PADDING = {'x': 5, 'y': 50};
+	var SYMBOL_SET = ['AAAAA', 'BBBBB', 'CCCC', 'DD', 'Eˆ¨∂ß∂¬˚ßå∂', 'F∂ß∂¬˚ßå∂', 'G∂ß∂¬˚ßå∂', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
 	
 	var tester;
 	
@@ -40,21 +39,23 @@
 		}
 		
 		var symbol_set = new SymbolSet(SYMBOL_SET, symbol_bounds, font, cache_container);
-		split_flap = new SplitFlap(symbol_set, context, {'x':100, 'y':100, 'width':26, 'height':40});
+		split_flap = new SplitFlap(symbol_set, context, {'x':100, 'y':100, 'width':symbol_bounds['width'] + 20, 'height':40});
 		split_flap.draw();
 		
-		split_flap = new SplitFlap(symbol_set, context, {'x':100, 'y':200, 'width':26, 'height':40});
+		split_flap = new SplitFlap(symbol_set, context, {'x':100, 'y':200, 'width':symbol_bounds['width'] + 20, 'height':40});
 		split_flap.current_symbol_index = 1;
 		split_flap.draw();
 		split_flap.flipToSymbolIndex(15);
 		split_flap.draw();
 		
 		tester = split_flap;
-		
 		drawLoop();
 	}
 	function drawLoop() {
-		setTimeout(function() {console.log('frame'); drawLoop()}, 30);
+		setTimeout(function() {
+			tester.tick();
+			drawLoop();
+		}, 30);
 	}
 	
 	function SymbolSet(symbols, bounds, font, container) {
@@ -98,6 +99,12 @@
 		context.drawImage(this.symbols_canvas, sx, sy, sw, sh, dx, dy, dw, dh);
 		context.restore();
 	}
+	SymbolSet.prototype.subsequentSymbolIndex = function(symbol_index) {
+		if (symbol_index >= this.symbols.length ) {
+			return 0;
+		}
+		return symbol_index + 1;
+	}
 	
 	function SplitFlap(symbol_set, context, bounds) {
 		this.symbol_set = symbol_set;
@@ -105,7 +112,8 @@
 		this.goal_symbol_index = 0;
 		this.context = context;
 		this.bounds = bounds;
-		this.animating = 100;
+		this.animation_progress = 100;
+		this.flip_animation_duration = 1000;
 	}
 	SplitFlap.prototype.draw = function() {
 		this.context.save();
@@ -118,40 +126,78 @@
 		this.context.restore();
 	}
 	SplitFlap.prototype.drawTopFlap = function() {
+		var drawFlapOutline = function(context, bounds) {
+			context.beginPath();
+			context.moveTo(0, 0);
+			context.lineTo(bounds['width'], 0);
+			context.lineTo(bounds['width'], bounds['height']/2);
+			context.lineTo(0, bounds['height']/2);
+			context.lineTo(0, 0);
+			context.clip();
+			context.fillStyle = "black";
+			context.fill();
+			context.stroke();
+		}
+		
 		this.context.save();
 		this.context.clearRect(0, 0, this.bounds['width'], this.bounds['height']/2);
-		this.context.beginPath();
-		this.context.moveTo(0, 0);
-		this.context.lineTo(this.bounds['width'], 0);
-		this.context.lineTo(this.bounds['width'], this.bounds['height']/2);
-		this.context.lineTo(0, this.bounds['height']/2);
-		this.context.lineTo(0, 0);
-		this.context.stroke();
-		// this.context.clip();
-		if (this.animating() == false) {
+		
+		if (this.animation_progress > 0) {
+			this.context.save();
+			drawFlapOutline(this.context, this.bounds);
 			this.context.transform(1,0, 0,1, 0,this.bounds['height'] / 4);
-			this.drawSymbol();
+			this.symbol_set.drawSymbol(this.symbol_set.subsequentSymbolIndex(this.current_symbol_index), this.context, this.bounds['width'], this.bounds['height']/2);
+			this.context.restore();
+		}
+		
+		if (this.animation_progress <= 50) {
+			this.context.save();
+			var vertical_scale_factor = (50-this.animation_progress)/50.0
+			this.context.transform(1,0, 0,vertical_scale_factor, 0,this.bounds['height']/2 * (1-vertical_scale_factor));
+			drawFlapOutline(this.context, this.bounds);
+			this.context.transform(1,0, 0,1, 0,this.bounds['height'] / 4);
+			this.symbol_set.drawSymbol(this.current_symbol_index, this.context, this.bounds['width'], this.bounds['height']/2);
+			this.context.restore();
 		}
 		this.context.restore();
 	}
 	SplitFlap.prototype.drawBottomFlap = function() {
+		var drawFlapOutline = function(context, bounds) {
+			context.beginPath();
+			context.moveTo(0, 0);
+			context.lineTo(bounds['width'], 0);
+			context.lineTo(bounds['width'], bounds['height']/2);
+			context.lineTo(0, bounds['height']/2);
+			context.lineTo(0, 0);
+			context.clip();
+			context.fillStyle = "black";
+			context.fill();
+			context.stroke();
+		}
+		
 		this.context.save();
 		this.context.clearRect(0, 0, this.bounds['width'], this.bounds['height']/2);
-		this.context.beginPath();
-		this.context.transform(1,0, 0,1, 30,0);
-		this.context.moveTo(0, 0);
-		this.context.lineTo(this.bounds['width'], 0);
-		this.context.lineTo(this.bounds['width'], this.bounds['height']/2);
-		this.context.lineTo(0, this.bounds['height']/2);
-		this.context.lineTo(0, 0);
-		this.context.stroke();
-		// this.context.clip();
+
+		// this.context.transform(1,0, 0,1, 30,0);		
+
+		this.context.save();
+		drawFlapOutline(this.context, this.bounds);
 		this.context.transform(1,0, 0,1, 0,-this.bounds['height'] / 4);
-		this.drawSymbol();
-		this.context.restore();
-	}
-	SplitFlap.prototype.drawSymbol = function() {
 		this.symbol_set.drawSymbol(this.current_symbol_index, this.context, this.bounds['width'], this.bounds['height']/2);
+		this.context.restore();
+
+		
+		if (this.animation_progress >= 50) {
+			this.context.save();
+			var vertical_scale_factor = (this.animation_progress - 50)/50.0;
+			this.context.transform(1,0, 0,vertical_scale_factor, 0,0);
+			drawFlapOutline(this.context, this.bounds);
+			this.context.transform(1,0, 0,1, 0,-this.bounds['height'] / 4);
+			this.symbol_set.drawSymbol(this.symbol_set.subsequentSymbolIndex(this.current_symbol_index), this.context, this.bounds['width'], this.bounds['height']/2);
+			this.context.restore();
+		}
+		
+		this.context.restore();
 	}
 	SplitFlap.prototype.jumpToSymbolIndex = function(symbol_index) {
 		this.current_symbol_index = symbol_index;
@@ -164,13 +210,17 @@
 		this.animation_progress = 0;
 		this.tick();
 	}
-	SplitFlap.prototype.tick = function() {
+	SplitFlap.prototype.tick = function(elapsed_millis) {
 		if (this.current_symbol_index != this.goal_symbol_index) {
-			this.animating = !this.animating;
+			this.animation_progress = (this.animation_progress + 10);
+			if (this.animation_progress > 100) {
+				this.current_symbol_index = this.symbol_set.subsequentSymbolIndex(this.current_symbol_index);
+				this.animation_progress = 0;
+			}
 			this.draw();
 		}
 	}
-	SplitFlap.animating = function() {
+	SplitFlap.prototype.animating = function() {
 		return this.animation_progress < 100;
 	}
 	</script>
