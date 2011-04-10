@@ -17,6 +17,9 @@
 	<![endif]-->
 	<script type="text/javascript" charset="utf-8">
 	var SYMBOL_SET = ['AAAAA', 'BBBBB', 'CCCC', 'DD', 'Eˆ¨∂ß∂¬˚ßå∂', 'F∂ß∂¬˚ßå∂', 'G∂ß∂¬˚ßå∂', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+	var FLAP_BORDER_STYLE = 'gray';
+	var FLAP_BACKGROUND_STYLE = 'black';
+	var FLAP_TEXT_STYLE = 'white';
 	
 	var tester;
 	
@@ -68,8 +71,8 @@
 		container.appendChild(this.symbols_canvas);
 		var context = this.symbols_canvas.getContext('2d');
 		
-		context.fillStyle = 'white';
-		context.strokeStyle = 'white';
+		context.fillStyle = FLAP_TEXT_STYLE;
+		context.strokeStyle = FLAP_TEXT_STYLE;
 		context.font = font;
 		context.textAligh = "center";
 		var x = 0;
@@ -117,8 +120,8 @@
 	}
 	SplitFlap.prototype.draw = function() {
 		this.context.save();
-		this.context.fillStyle = 'white';
-		this.context.strokeStyle = 'white';
+		this.context.fillStyle = FLAP_TEXT_STYLE;
+		this.context.strokeStyle = FLAP_TEXT_STYLE;
 		this.context.transform(1,0, 0,1, this.bounds['x'],this.bounds['y']);
 		this.drawTopFlap();
 		this.context.transform(1,0, 0,1, 0,this.bounds['height']/2);
@@ -137,7 +140,8 @@
 			context.lineTo(bounds['width'], bounds['height']/2);
 			context.closePath();
 			
-			context.fillStyle = "black";
+			context.fillStyle = FLAP_BACKGROUND_STYLE;
+			context.strokeStyle = FLAP_BORDER_STYLE;
 			context.fill();
 			context.stroke();
 			context.clip();
@@ -177,7 +181,8 @@
 			context.bezierCurveTo(0, bounds['height']/2, 0, bounds['height']/2, 0, bounds['height']/2 - corner_radius);
 			context.closePath();
 			
-			context.fillStyle = "black";
+			context.fillStyle = FLAP_BACKGROUND_STYLE;
+			context.strokeStyle = FLAP_BORDER_STYLE;
 			context.fill();
 			context.stroke();
 			context.clip();
