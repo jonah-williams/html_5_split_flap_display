@@ -127,16 +127,20 @@
 	}
 	SplitFlap.prototype.drawTopFlap = function() {
 		var drawFlapOutline = function(context, bounds) {
+			corner_radius = Math.min(Math.min(10, bounds['width']), bounds['height']);
 			context.beginPath();
-			context.moveTo(0, 0);
-			context.lineTo(bounds['width'], 0);
+			context.moveTo(0, bounds['height']/2);
+			context.lineTo(0, corner_radius);
+			context.bezierCurveTo(0, 0, 0, 0, corner_radius, 0);
+			context.lineTo(bounds['width'] - corner_radius, 0);
+			context.bezierCurveTo(bounds['width'], 0, bounds['width'], 0, bounds['width'], corner_radius);
 			context.lineTo(bounds['width'], bounds['height']/2);
-			context.lineTo(0, bounds['height']/2);
-			context.lineTo(0, 0);
-			context.clip();
+			context.closePath();
+			
 			context.fillStyle = "black";
 			context.fill();
 			context.stroke();
+			context.clip();
 		}
 		
 		this.context.save();
@@ -163,22 +167,27 @@
 	}
 	SplitFlap.prototype.drawBottomFlap = function() {
 		var drawFlapOutline = function(context, bounds) {
+			corner_radius = Math.min(Math.min(10, bounds['width']), bounds['height']);
 			context.beginPath();
 			context.moveTo(0, 0);
 			context.lineTo(bounds['width'], 0);
-			context.lineTo(bounds['width'], bounds['height']/2);
-			context.lineTo(0, bounds['height']/2);
-			context.lineTo(0, 0);
-			context.clip();
+			context.lineTo(bounds['width'], bounds['height']/2 - corner_radius);
+			context.bezierCurveTo(bounds['width'], bounds['height']/2, bounds['width'], bounds['height']/2, bounds['width'] - corner_radius, bounds['height']/2);
+			context.lineTo(corner_radius, bounds['height']/2);
+			context.bezierCurveTo(0, bounds['height']/2, 0, bounds['height']/2, 0, bounds['height']/2 - corner_radius);
+			context.closePath();
+			
 			context.fillStyle = "black";
 			context.fill();
 			context.stroke();
+			context.clip();
 		}
 		
 		this.context.save();
 		this.context.clearRect(0, 0, this.bounds['width'], this.bounds['height']/2);
 
-		// this.context.transform(1,0, 0,1, 30,0);		
+		// DEBUG: uncomment to offset the top and bottom flaps
+		// this.context.transform(1,0, 0,1, 0,this.bounds['height']);		
 
 		this.context.save();
 		drawFlapOutline(this.context, this.bounds);
