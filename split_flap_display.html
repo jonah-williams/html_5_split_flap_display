@@ -19,6 +19,7 @@
 	var FLAP_BORDER_STYLE = 'gray';
 	var FLAP_BACKGROUND_STYLE = 'black';
 	var FLAP_TEXT_STYLE = 'white';
+	var ANIMATION_INCREMENT = 25;
 	var last_frame;
 	
 	function el(id) { return document.getElementById(id); }
@@ -54,7 +55,12 @@
 				'height':flap_height
 			}));
 			split_flaps[symbol_index].jumpToSymbolIndex(symbol_index);
-			split_flaps[symbol_index].flipToSymbolIndex(Math.floor(Math.random()*symbol_set.symbols.length));
+
+			var delay = Math.floor(Math.random()*1000 + 1000 * Math.floor(symbol_index / symbol_set.symbol_columns));
+			var goal = Math.floor(Math.random()*symbol_set.symbols.length);
+			setTimeout(function(sf, goal) {
+				sf.flipToSymbolIndex(goal);
+			}, delay, split_flaps[symbol_index], goal);
 		}
 		
 		last_frame = (new Date()).getTime();
@@ -274,7 +280,7 @@
 	}
 	SplitFlap.prototype.tick = function(elapsed_millis) {
 		if (this.current_symbol_index != this.goal_symbol_index) {
-			this.animation_progress = (this.animation_progress + 10);
+			this.animation_progress = (this.animation_progress + ANIMATION_INCREMENT);
 			if (this.animation_progress > 100) {
 				this.current_symbol_index = this.symbol_set.subsequentSymbolIndex(this.current_symbol_index);
 				this.animation_progress = 0;
