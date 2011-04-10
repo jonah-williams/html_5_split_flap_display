@@ -32,25 +32,34 @@
 		
 		var cache_container = el('caches');
 		
-		var display_strings = SymbolSet.UTF8Characters();
-		var symbol_bounds = {'width': 0, 'height': 24};
+		var display_strings = SymbolSet.ASCIICharacters();
+		var symbol_bounds = {'width': 0, 'height': 40};
 		var display_string;
-		for(display_string in display_strings) {
+		for(display_string = 0; display_string < display_strings.length; display_string++) {
 			symbol_bounds['width'] = Math.max(symbol_bounds['width'], context.measureText(display_strings[display_string]).width);
 		}
 		
 		var symbol_set = new SymbolSet(display_strings, symbol_bounds, font, cache_container);
 		
-		split_flap = new SplitFlap(symbol_set, context, {'x':100, 'y':100, 'width':symbol_bounds['width'] + 20, 'height':symbol_bounds['height'] + 10});
-		split_flap.draw();
+		var split_flaps = [];
+		var symbol_index;
+		var flap_width = symbol_bounds['width'] + 20;
+		var flap_height = symbol_bounds['height'] + 30;
+		for (symbol_index=0; symbol_index < symbol_set.symbols.length; symbol_index++) {
+			split_flaps.push(new SplitFlap(symbol_set, context, {
+				'x':50 + (symbol_index % 16) * (flap_width + 10), 
+				'y':50 + Math.floor(symbol_index / 16) * (flap_height + 20), 
+				'width':flap_width, 
+				'height':flap_height
+			}));
+			split_flaps[symbol_index].jumpToSymbolIndex(symbol_index);
+			split_flaps[symbol_index].draw();
+		}
+
+		// split_flap.current_symbol_index = 1;
+		// split_flap.flipToSymbolIndex(symbol_set.symbols.length);
 		
-		split_flap = new SplitFlap(symbol_set, context, {'x':100, 'y':200, 'width':symbol_bounds['width'] + 20, 'height':symbol_bounds['height'] + 30});
-		split_flap.current_symbol_index = 1;
-		split_flap.draw();
-		split_flap.flipToSymbolIndex(symbol_set.symbols.length);
-		split_flap.draw();
-		
-		drawLoop([split_flap]);
+		drawLoop(split_flaps);
 	}
 	function drawLoop(split_flaps) {
 		setTimeout(function() {
@@ -66,9 +75,12 @@
 		this.symbols = symbols;
 		this.bounds = bounds;
 		
+		this.symbol_columns = Math.min(symbols.length, Math.floor(1000 / bounds['width']));
+		this.symbol_rows = 1 + Math.floor(symbols.length / this.symbol_columns);
+		
 		this.symbols_canvas = document.createElement('canvas');
-	    this.symbols_canvas.setAttribute('width', symbols.length * bounds['width']); 
-		this.symbols_canvas.setAttribute('height', bounds['height']);
+	    this.symbols_canvas.setAttribute('width', this.symbol_columns * bounds['width']); 
+		this.symbols_canvas.setAttribute('height', this.symbol_rows * bounds['height']);
 		container.appendChild(this.symbols_canvas);
 		var context = this.symbols_canvas.getContext('2d');
 		
@@ -76,20 +88,25 @@
 		context.strokeStyle = FLAP_TEXT_STYLE;
 		context.font = font;
 		context.textAligh = "center";
+		context.textBaseline = "top";
 		var x = 0;
-		var y = bounds['height'];
+		var y = 0;
 		var symbol;
-		for(symbol in this.symbols) {
+		for(symbol = 0; symbol < this.symbols.length; symbol++) {
 			context.fillText(this.symbols[symbol], x, y);
 			x += bounds['width'];
+			if (x >= bounds['width'] * this.symbol_columns) {
+				x = 0;
+				y += bounds['height'];
+			}
 		}
 	}
 	SymbolSet.prototype.drawSymbol = function(symbol_index, context, display_width, display_height) {
 		context.save();
 
 		//crop the symbol from the cache canvas
-		var sx = this.bounds['width'] * symbol_index;
-		var sy = 0;
+		var sx = this.bounds['width'] * (symbol_index % this.symbol_columns);
+		var sy = this.bounds['height'] * Math.floor(symbol_index / this.symbol_columns);
 		var sw = this.bounds['width'];
 		var sh = this.bounds['height'];
 
@@ -112,7 +129,7 @@
 	SymbolSet.ASCIICharacters = function() {
 		characters = [];
 		var char_code;
-		for(char_code = 32; char_code <= 126; char_code++) {
+		for(char_code = 0x0020; char_code <= 0x007E; char_code++) {
 			characters.push(String.fromCharCode(char_code));
 		}
 		return characters;
@@ -120,7 +137,7 @@
 	SymbolSet.ASCIIUpperCaseCharacters = function() {
 		characters = [];
 		var char_code;
-		for(char_code = 65; char_code <= 90; char_code++) {
+		for(char_code = 0x0041; char_code <= 0x005A; char_code++) {
 			characters.push(String.fromCharCode(char_code));
 		}
 		return characters;
@@ -244,8 +261,8 @@
 	SplitFlap.prototype.jumpToSymbolIndex = function(symbol_index) {
 		this.current_symbol_index = symbol_index;
 		this.goal_symbol_index = symbol_index;
-		this.animation_progress = 100;
-		this.tick();
+		this.animation_progress = 0;
+		this.draw();
 	}
 	SplitFlap.prototype.flipToSymbolIndex = function(symbol_index) {
 		this.goal_symbol_index = symbol_index;
