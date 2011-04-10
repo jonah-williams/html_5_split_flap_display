@@ -16,12 +16,9 @@
 		<script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
 	<![endif]-->
 	<script type="text/javascript" charset="utf-8">
-	var SYMBOL_SET = ['AAAAA', 'BBBBB', 'CCCC', 'DD', 'Eˆ¨∂ß∂¬˚ßå∂', 'F∂ß∂¬˚ßå∂', 'G∂ß∂¬˚ßå∂', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
 	var FLAP_BORDER_STYLE = 'gray';
 	var FLAP_BACKGROUND_STYLE = 'black';
 	var FLAP_TEXT_STYLE = 'white';
-	
-	var tester;
 	
 	function el(id) { return document.getElementById(id); }
 	function each(a,f) { for (var i=0,l=a.length; i<l; i++) f(a[i],i); }
@@ -35,29 +32,33 @@
 		
 		var cache_container = el('caches');
 		
+		var display_strings = SymbolSet.UTF8Characters();
 		var symbol_bounds = {'width': 0, 'height': 24};
-		var symbol;
-		for(symbol in SYMBOL_SET) {
-			symbol_bounds['width'] = Math.max(symbol_bounds['width'], context.measureText(SYMBOL_SET[symbol]).width);
+		var display_string;
+		for(display_string in display_strings) {
+			symbol_bounds['width'] = Math.max(symbol_bounds['width'], context.measureText(display_strings[display_string]).width);
 		}
 		
-		var symbol_set = new SymbolSet(SYMBOL_SET, symbol_bounds, font, cache_container);
-		split_flap = new SplitFlap(symbol_set, context, {'x':100, 'y':100, 'width':symbol_bounds['width'] + 20, 'height':40});
+		var symbol_set = new SymbolSet(display_strings, symbol_bounds, font, cache_container);
+		
+		split_flap = new SplitFlap(symbol_set, context, {'x':100, 'y':100, 'width':symbol_bounds['width'] + 20, 'height':symbol_bounds['height'] + 10});
 		split_flap.draw();
 		
-		split_flap = new SplitFlap(symbol_set, context, {'x':100, 'y':200, 'width':symbol_bounds['width'] + 20, 'height':40});
+		split_flap = new SplitFlap(symbol_set, context, {'x':100, 'y':200, 'width':symbol_bounds['width'] + 20, 'height':symbol_bounds['height'] + 30});
 		split_flap.current_symbol_index = 1;
 		split_flap.draw();
-		split_flap.flipToSymbolIndex(15);
+		split_flap.flipToSymbolIndex(symbol_set.symbols.length);
 		split_flap.draw();
 		
-		tester = split_flap;
-		drawLoop();
+		drawLoop([split_flap]);
 	}
-	function drawLoop() {
+	function drawLoop(split_flaps) {
 		setTimeout(function() {
-			tester.tick();
-			drawLoop();
+			var current_split_flap;
+			for (current_split_flap in split_flaps) {
+				split_flaps[current_split_flap].tick();
+			}
+			drawLoop(split_flaps);
 		}, 30);
 	}
 	
@@ -107,6 +108,33 @@
 			return 0;
 		}
 		return symbol_index + 1;
+	}
+	SymbolSet.ASCIICharacters = function() {
+		characters = [];
+		var char_code;
+		for(char_code = 32; char_code <= 126; char_code++) {
+			characters.push(String.fromCharCode(char_code));
+		}
+		return characters;
+	}
+	SymbolSet.ASCIIUpperCaseCharacters = function() {
+		characters = [];
+		var char_code;
+		for(char_code = 65; char_code <= 90; char_code++) {
+			characters.push(String.fromCharCode(char_code));
+		}
+		return characters;
+	}
+	SymbolSet.UTF8Characters = function() {
+		characters = [];
+		var char_code;
+		for(char_code = 0x0020; char_code <= 0x007E; char_code++) {
+			characters.push(String.fromCharCode(char_code));
+		}
+		for(char_code = 0x00A0; char_code <= 0x00FF; char_code++) {
+			characters.push(String.fromCharCode(char_code));
+		}
+		return characters;
 	}
 	
 	function SplitFlap(symbol_set, context, bounds) {
@@ -233,9 +261,6 @@
 			}
 			this.draw();
 		}
-	}
-	SplitFlap.prototype.animating = function() {
-		return this.animation_progress < 100;
 	}
 	</script>
 </head>
