@@ -16,10 +16,9 @@
 		<script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
 	<![endif]-->
 	<script type="text/javascript" charset="utf-8">
-	var SYMBOL_SET = ['A', 'B', 'C', 'D', 'E', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
-	var FLAP_PADDING = {'x': 5, 'y': 50};
-	
-	var tester;
+	var FLAP_BORDER_STYLE = 'gray';
+	var FLAP_BACKGROUND_STYLE = 'black';
+	var FLAP_TEXT_STYLE = 'white';
 	
 	function el(id) { return document.getElementById(id); }
 	function each(a,f) { for (var i=0,l=a.length; i<l; i++) f(a[i],i); }
@@ -33,28 +32,34 @@
 		
 		var cache_container = el('caches');
 		
+		var display_strings = SymbolSet.UTF8Characters();
 		var symbol_bounds = {'width': 0, 'height': 24};
-		var symbol;
-		for(symbol in SYMBOL_SET) {
-			symbol_bounds['width'] = Math.max(symbol_bounds['width'], context.measureText(SYMBOL_SET[symbol]).width);
+		var display_string;
+		for(display_string in display_strings) {
+			symbol_bounds['width'] = Math.max(symbol_bounds['width'], context.measureText(display_strings[display_string]).width);
 		}
 		
-		var symbol_set = new SymbolSet(SYMBOL_SET, symbol_bounds, font, cache_container);
-		split_flap = new SplitFlap(symbol_set, context, {'x':100, 'y':100, 'width':26, 'height':40});
+		var symbol_set = new SymbolSet(display_strings, symbol_bounds, font, cache_container);
+		
+		split_flap = new SplitFlap(symbol_set, context, {'x':100, 'y':100, 'width':symbol_bounds['width'] + 20, 'height':symbol_bounds['height'] + 10});
 		split_flap.draw();
 		
-		split_flap = new SplitFlap(symbol_set, context, {'x':100, 'y':200, 'width':26, 'height':40});
+		split_flap = new SplitFlap(symbol_set, context, {'x':100, 'y':200, 'width':symbol_bounds['width'] + 20, 'height':symbol_bounds['height'] + 30});
 		split_flap.current_symbol_index = 1;
 		split_flap.draw();
-		split_flap.flipToSymbolIndex(15);
+		split_flap.flipToSymbolIndex(symbol_set.symbols.length);
 		split_flap.draw();
 		
-		tester = split_flap;
-		
-		drawLoop();
+		drawLoop([split_flap]);
 	}
-	function drawLoop() {
-		setTimeout(function() {console.log('frame'); drawLoop()}, 30);
+	function drawLoop(split_flaps) {
+		setTimeout(function() {
+			var current_split_flap;
+			for (current_split_flap in split_flaps) {
+				split_flaps[current_split_flap].tick();
+			}
+			drawLoop(split_flaps);
+		}, 30);
 	}
 	
 	function SymbolSet(symbols, bounds, font, container) {
@@ -67,8 +72,8 @@
 		container.appendChild(this.symbols_canvas);
 		var context = this.symbols_canvas.getContext('2d');
 		
-		context.fillStyle = 'white';
-		context.strokeStyle = 'white';
+		context.fillStyle = FLAP_TEXT_STYLE;
+		context.strokeStyle = FLAP_TEXT_STYLE;
 		context.font = font;
 		context.textAligh = "center";
 		var x = 0;
@@ -98,6 +103,39 @@
 		context.drawImage(this.symbols_canvas, sx, sy, sw, sh, dx, dy, dw, dh);
 		context.restore();
 	}
+	SymbolSet.prototype.subsequentSymbolIndex = function(symbol_index) {
+		if (symbol_index >= this.symbols.length ) {
+			return 0;
+		}
+		return symbol_index + 1;
+	}
+	SymbolSet.ASCIICharacters = function() {
+		characters = [];
+		var char_code;
+		for(char_code = 32; char_code <= 126; char_code++) {
+			characters.push(String.fromCharCode(char_code));
+		}
+		return characters;
+	}
+	SymbolSet.ASCIIUpperCaseCharacters = function() {
+		characters = [];
+		var char_code;
+		for(char_code = 65; char_code <= 90; char_code++) {
+			characters.push(String.fromCharCode(char_code));
+		}
+		return characters;
+	}
+	SymbolSet.UTF8Characters = function() {
+		characters = [];
+		var char_code;
+		for(char_code = 0x0020; char_code <= 0x007E; char_code++) {
+			characters.push(String.fromCharCode(char_code));
+		}
+		for(char_code = 0x00A0; char_code <= 0x00FF; char_code++) {
+			characters.push(String.fromCharCode(char_code));
+		}
+		return characters;
+	}
 	
 	function SplitFlap(symbol_set, context, bounds) {
 		this.symbol_set = symbol_set;
@@ -105,12 +143,13 @@
 		this.goal_symbol_index = 0;
 		this.context = context;
 		this.bounds = bounds;
-		this.animating = 100;
+		this.animation_progress = 100;
+		this.flip_animation_duration = 1000;
 	}
 	SplitFlap.prototype.draw = function() {
 		this.context.save();
-		this.context.fillStyle = 'white';
-		this.context.strokeStyle = 'white';
+		this.context.fillStyle = FLAP_TEXT_STYLE;
+		this.context.strokeStyle = FLAP_TEXT_STYLE;
 		this.context.transform(1,0, 0,1, this.bounds['x'],this.bounds['y']);
 		this.drawTopFlap();
 		this.context.transform(1,0, 0,1, 0,this.bounds['height']/2);
@@ -118,40 +157,89 @@
 		this.context.restore();
 	}
 	SplitFlap.prototype.drawTopFlap = function() {
+		var drawFlapOutline = function(context, bounds) {
+			corner_radius = Math.min(Math.min(10, bounds['width']), bounds['height']);
+			context.beginPath();
+			context.moveTo(0, bounds['height']/2);
+			context.lineTo(0, corner_radius);
+			context.bezierCurveTo(0, 0, 0, 0, corner_radius, 0);
+			context.lineTo(bounds['width'] - corner_radius, 0);
+			context.bezierCurveTo(bounds['width'], 0, bounds['width'], 0, bounds['width'], corner_radius);
+			context.lineTo(bounds['width'], bounds['height']/2);
+			context.closePath();
+			
+			context.fillStyle = FLAP_BACKGROUND_STYLE;
+			context.strokeStyle = FLAP_BORDER_STYLE;
+			context.fill();
+			context.stroke();
+			context.clip();
+		}
+		
 		this.context.save();
 		this.context.clearRect(0, 0, this.bounds['width'], this.bounds['height']/2);
-		this.context.beginPath();
-		this.context.moveTo(0, 0);
-		this.context.lineTo(this.bounds['width'], 0);
-		this.context.lineTo(this.bounds['width'], this.bounds['height']/2);
-		this.context.lineTo(0, this.bounds['height']/2);
-		this.context.lineTo(0, 0);
-		this.context.stroke();
-		// this.context.clip();
-		if (this.animating() == false) {
+		
+		if (this.animation_progress > 0) {
+			this.context.save();
+			drawFlapOutline(this.context, this.bounds);
 			this.context.transform(1,0, 0,1, 0,this.bounds['height'] / 4);
-			this.drawSymbol();
+			this.symbol_set.drawSymbol(this.symbol_set.subsequentSymbolIndex(this.current_symbol_index), this.context, this.bounds['width'], this.bounds['height']/2);
+			this.context.restore();
+		}
+		
+		if (this.animation_progress <= 50) {
+			this.context.save();
+			var vertical_scale_factor = (50-this.animation_progress)/50.0
+			this.context.transform(1,0, 0,vertical_scale_factor, 0,this.bounds['height']/2 * (1-vertical_scale_factor));
+			drawFlapOutline(this.context, this.bounds);
+			this.context.transform(1,0, 0,1, 0,this.bounds['height'] / 4);
+			this.symbol_set.drawSymbol(this.current_symbol_index, this.context, this.bounds['width'], this.bounds['height']/2);
+			this.context.restore();
 		}
 		this.context.restore();
 	}
 	SplitFlap.prototype.drawBottomFlap = function() {
+		var drawFlapOutline = function(context, bounds) {
+			corner_radius = Math.min(Math.min(10, bounds['width']), bounds['height']);
+			context.beginPath();
+			context.moveTo(0, 0);
+			context.lineTo(bounds['width'], 0);
+			context.lineTo(bounds['width'], bounds['height']/2 - corner_radius);
+			context.bezierCurveTo(bounds['width'], bounds['height']/2, bounds['width'], bounds['height']/2, bounds['width'] - corner_radius, bounds['height']/2);
+			context.lineTo(corner_radius, bounds['height']/2);
+			context.bezierCurveTo(0, bounds['height']/2, 0, bounds['height']/2, 0, bounds['height']/2 - corner_radius);
+			context.closePath();
+			
+			context.fillStyle = FLAP_BACKGROUND_STYLE;
+			context.strokeStyle = FLAP_BORDER_STYLE;
+			context.fill();
+			context.stroke();
+			context.clip();
+		}
+		
 		this.context.save();
 		this.context.clearRect(0, 0, this.bounds['width'], this.bounds['height']/2);
-		this.context.beginPath();
-		this.context.transform(1,0, 0,1, 30,0);
-		this.context.moveTo(0, 0);
-		this.context.lineTo(this.bounds['width'], 0);
-		this.context.lineTo(this.bounds['width'], this.bounds['height']/2);
-		this.context.lineTo(0, this.bounds['height']/2);
-		this.context.lineTo(0, 0);
-		this.context.stroke();
-		// this.context.clip();
+
+		// DEBUG: uncomment to offset the top and bottom flaps
+		// this.context.transform(1,0, 0,1, 0,this.bounds['height']);		
+
+		this.context.save();
+		drawFlapOutline(this.context, this.bounds);
 		this.context.transform(1,0, 0,1, 0,-this.bounds['height'] / 4);
-		this.drawSymbol();
-		this.context.restore();
-	}
-	SplitFlap.prototype.drawSymbol = function() {
 		this.symbol_set.drawSymbol(this.current_symbol_index, this.context, this.bounds['width'], this.bounds['height']/2);
+		this.context.restore();
+
+		
+		if (this.animation_progress >= 50) {
+			this.context.save();
+			var vertical_scale_factor = (this.animation_progress - 50)/50.0;
+			this.context.transform(1,0, 0,vertical_scale_factor, 0,0);
+			drawFlapOutline(this.context, this.bounds);
+			this.context.transform(1,0, 0,1, 0,-this.bounds['height'] / 4);
+			this.symbol_set.drawSymbol(this.symbol_set.subsequentSymbolIndex(this.current_symbol_index), this.context, this.bounds['width'], this.bounds['height']/2);
+			this.context.restore();
+		}
+		
+		this.context.restore();
 	}
 	SplitFlap.prototype.jumpToSymbolIndex = function(symbol_index) {
 		this.current_symbol_index = symbol_index;
@@ -164,14 +252,15 @@
 		this.animation_progress = 0;
 		this.tick();
 	}
-	SplitFlap.prototype.tick = function() {
+	SplitFlap.prototype.tick = function(elapsed_millis) {
 		if (this.current_symbol_index != this.goal_symbol_index) {
-			this.animating = !this.animating;
+			this.animation_progress = (this.animation_progress + 10);
+			if (this.animation_progress > 100) {
+				this.current_symbol_index = this.symbol_set.subsequentSymbolIndex(this.current_symbol_index);
+				this.animation_progress = 0;
+			}
 			this.draw();
 		}
-	}
-	SplitFlap.animating = function() {
-		return this.animation_progress < 100;
 	}
 	</script>
 </head>
