@@ -19,6 +19,7 @@
 	var FLAP_BORDER_STYLE = 'gray';
 	var FLAP_BACKGROUND_STYLE = 'black';
 	var FLAP_TEXT_STYLE = 'white';
+	var last_frame;
 	
 	function el(id) { return document.getElementById(id); }
 	function each(a,f) { for (var i=0,l=a.length; i<l; i++) f(a[i],i); }
@@ -53,12 +54,10 @@
 				'height':flap_height
 			}));
 			split_flaps[symbol_index].jumpToSymbolIndex(symbol_index);
-			split_flaps[symbol_index].draw();
+			split_flaps[symbol_index].flipToSymbolIndex(Math.floor(Math.random()*symbol_set.symbols.length));
 		}
-
-		// split_flap.current_symbol_index = 1;
-		// split_flap.flipToSymbolIndex(symbol_set.symbols.length);
 		
+		last_frame = (new Date()).getTime();
 		drawLoop(split_flaps);
 	}
 	function drawLoop(split_flaps) {
@@ -67,6 +66,10 @@
 			for (current_split_flap in split_flaps) {
 				split_flaps[current_split_flap].tick();
 			}
+			var current_frame = (new Date).getTime();
+			var elapsed_millis = current_frame - last_frame;
+			var frame_rate = 1000 / elapsed_millis;
+			last_frame = current_frame;
 			drawLoop(split_flaps);
 		}, 30);
 	}
