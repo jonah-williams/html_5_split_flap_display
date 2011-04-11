@@ -9,7 +9,7 @@
 		}
 		#caches {
 			background-color: black;
-			display: block;
+			display: none;
 		}
 	</style>
 	<!--[if IE]>
@@ -34,7 +34,7 @@
 		
 		var cache_container = el('caches');
 		
-		var display_strings = SymbolSet.ASCIIUpperCaseCharacters();
+		var display_strings = SymbolSet.CapsNumericPunctuationCharacters();
 		var symbol_bounds = {'width': 0, 'height': 40};
 		var display_string;
 		for(display_string = 0; display_string < display_strings.length; display_string++) {
@@ -48,24 +48,37 @@
 		var flap_width = symbol_bounds['width'] + 12;
 		var flap_height = symbol_bounds['height'];
 		var flaps_per_row = 16;
-		for (symbol_index=0; symbol_index < symbol_set.symbols.length; symbol_index++) {
+		for (symbol_index=0; symbol_index < 144; symbol_index++) {
 			split_flaps.push(new SplitFlap(symbol_set, context, {
-				'x':20 + (symbol_index % flaps_per_row) * (flap_width + 2), 
+				'x':400 + (symbol_index % flaps_per_row) * (flap_width + 2), 
 				'y':20 + Math.floor(symbol_index / flaps_per_row) * (flap_height + 10), 
 				'width':flap_width, 
 				'height':flap_height
 			}));
-			split_flaps[symbol_index].jumpToSymbolIndex(symbol_index);
-
-			var delay = Math.floor(Math.random()*1000 + 1000 * Math.floor(symbol_index / symbol_set.symbol_columns));
-			var goal = Math.floor(Math.random()*symbol_set.symbols.length);
-			setTimeout(function(sf, goal) {
-				sf.flipToSymbolIndex(goal);
-			}, delay, split_flaps[symbol_index], goal);
+			split_flaps[symbol_index].jumpToSymbolIndex(0);
+		}
+		
+		var content_split_flaps = split_flaps
+		var header_split_flaps = [];
+		
+		flaps_per_row = 8;
+		for (symbol_index=0; symbol_index < 72; symbol_index++) {
+			var flap = new SplitFlap(symbol_set, context, {
+				'x':20 + (symbol_index % flaps_per_row) * (flap_width + 2), 
+				'y':20 + Math.floor(symbol_index / flaps_per_row) * (flap_height + 10), 
+				'width':flap_width, 
+				'height':flap_height
+			});
+			split_flaps.push(flap);
+			header_split_flaps.push(flap);
+			flap.jumpToSymbolIndex(0);
 		}
 		
 		last_frame = (new Date()).getTime();
 		drawLoop(split_flaps);
+		
+		updateDisplay(' Now boarding...10:00PM 11:30PM  1:00AM  7:00AM 10:15AM  8:00PM 4:00AM  10:45PM'.toUpperCase(), content_split_flaps);
+		updateDisplay('Boston  New YorkSan FranChicago Los Angl'.toUpperCase(), header_split_flaps);
 	}
 	function drawLoop(split_flaps) {
 		setTimeout(function() {
@@ -79,6 +92,22 @@
 			last_frame = current_frame;
 			drawLoop(split_flaps);
 		}, 30);
+	}
+	function updateDisplay(message, split_flaps) {
+		var index;
+		for (index=0; (index < split_flaps.length) && (index < message.length); index++) {
+			var split_flap = split_flaps[index];
+			var delay = Math.floor(Math.random()*300 + 50 * index);
+			var goal = split_flap.symbol_set.indexOfSymbol(message[index]);
+			if (goal != null) {
+				setTimeout(function(sf, goal) {
+					sf.flipToSymbolIndex(goal);
+				}, delay, split_flap, goal);
+			}
+			else {
+				split_flap.flipToSymbolIndex(0);
+			}
+		}
 	}
 	
 	function SymbolSet(symbols, bounds, font, container) {
@@ -136,6 +165,15 @@
 		}
 		return symbol_index + 1;
 	}
+	SymbolSet.prototype.indexOfSymbol = function(symbol) {
+		var index;
+		for (index = 0; index < this.symbols.length; index++) {
+			if (this.symbols[index] == symbol) {
+				return index;
+			}
+		}
+		return null;
+	}
 	SymbolSet.ASCIICharacters = function() {
 		characters = [];
 		var char_code;
@@ -159,6 +197,18 @@
 			characters.push(String.fromCharCode(char_code));
 		}
 		for(char_code = 0x00A0; char_code <= 0x00FF; char_code++) {
+			characters.push(String.fromCharCode(char_code));
+		}
+		return characters;
+	}
+	SymbolSet.CapsNumericPunctuationCharacters = function() {
+		characters = [];
+		characters.push(String.fromCharCode(0x0020));
+		var char_code;
+		for(char_code = 0x0041; char_code <= 0x005A; char_code++) {
+			characters.push(String.fromCharCode(char_code));
+		}
+		for(char_code = 0x0030; char_code <= 0x003A; char_code++) {
 			characters.push(String.fromCharCode(char_code));
 		}
 		return characters;
@@ -293,7 +343,7 @@
 </head>
 
 <body onload="init()">
-	<canvas id="display" width="1000" height="650"></canvas>
+	<canvas id="display" width="1000" height="480"></canvas>
 	<div id="caches"></div>
 	<div id="credits">
 		<a href="#"></a>
