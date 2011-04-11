@@ -19,7 +19,7 @@
 	var FLAP_BORDER_STYLE = 'gray';
 	var FLAP_BACKGROUND_STYLE = 'black';
 	var FLAP_TEXT_STYLE = 'white';
-	var ANIMATION_INCREMENT = 25;
+	var ANIMATION_INCREMENT = 30;
 	var last_frame;
 	
 	function el(id) { return document.getElementById(id); }
@@ -34,7 +34,7 @@
 		
 		var cache_container = el('caches');
 		
-		var display_strings = SymbolSet.UTF8Characters();
+		var display_strings = SymbolSet.ASCIIUpperCaseCharacters();
 		var symbol_bounds = {'width': 0, 'height': 40};
 		var display_string;
 		for(display_string = 0; display_string < display_strings.length; display_string++) {
@@ -45,7 +45,7 @@
 		
 		var split_flaps = [];
 		var symbol_index;
-		var flap_width = symbol_bounds['width'] + 20;
+		var flap_width = symbol_bounds['width'] + 12;
 		var flap_height = symbol_bounds['height'];
 		var flaps_per_row = 16;
 		for (symbol_index=0; symbol_index < symbol_set.symbols.length; symbol_index++) {
