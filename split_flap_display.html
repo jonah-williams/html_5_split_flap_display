@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<title>HTML5 boilerplate—all you really need…</title>
+	<style type="text/css">
+		#display {
+			background-color: black;
+		}
+		#caches {
+			background-color: black;
+			display: none;
+		}
+	</style>
+	<!--[if IE]>
+		<script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+	<![endif]-->
+	<script type="text/javascript" charset="utf-8">
+	var FLAP_BORDER_STYLE = 'gray';
+	var FLAP_BACKGROUND_STYLE = 'black';
+	var FLAP_TEXT_STYLE = 'white';
+	var ANIMATION_INCREMENT = 30;
+	var last_frame;
+	
+	function el(id) { return document.getElementById(id); }
+	function each(a,f) { for (var i=0,l=a.length; i<l; i++) f(a[i],i); }
+	
+	function init() {
+		var canvas = el('display');
+		var context = canvas.getContext('2d')
+		
+		var font = "bold 36px Monospace";
+		context.font = font;
+		
+		var cache_container = el('caches');
+		
+		var display_strings = SymbolSet.CapsNumericPunctuationCharacters();
+		var symbol_bounds = {'width': 0, 'height': 40};
+		var display_string;
+		for(display_string = 0; display_string < display_strings.length; display_string++) {
+			symbol_bounds['width'] = Math.max(symbol_bounds['width'], context.measureText(display_strings[display_string]).width);
+		}
+		
+		var symbol_set = new SymbolSet(display_strings, symbol_bounds, font, cache_container);
+		
+		var split_flaps = [];
+		var symbol_index;
+		var flap_width = symbol_bounds['width'] + 12;
+		var flap_height = symbol_bounds['height'];
+		var flaps_per_row = 16;
+		for (symbol_index=0; symbol_index < 144; symbol_index++) {
+			split_flaps.push(new SplitFlap(symbol_set, context, {
+				'x':400 + (symbol_index % flaps_per_row) * (flap_width + 2), 
+				'y':20 + Math.floor(symbol_index / flaps_per_row) * (flap_height + 10), 
+				'width':flap_width, 
+				'height':flap_height
+			}));
+			split_flaps[symbol_index].jumpToSymbolIndex(0);
+		}
+		
+		var content_split_flaps = split_flaps
+		var header_split_flaps = [];
+		
+		flaps_per_row = 8;
+		for (symbol_index=0; symbol_index < 72; symbol_index++) {
+			var flap = new SplitFlap(symbol_set, context, {
+				'x':20 + (symbol_index % flaps_per_row) * (flap_width + 2), 
+				'y':20 + Math.floor(symbol_index / flaps_per_row) * (flap_height + 10), 
+				'width':flap_width, 
+				'height':flap_height
+			});
+			split_flaps.push(flap);
+			header_split_flaps.push(flap);
+			flap.jumpToSymbolIndex(0);
+		}
+		
+		last_frame = (new Date()).getTime();
+		drawLoop(split_flaps);
+		
+		updateDisplay(' Now boarding...10:00PM 11:30PM  1:00AM  7:00AM 10:15AM  8:00PM 4:00AM  10:45PM'.toUpperCase(), content_split_flaps);
+		updateDisplay('Boston  New YorkSan FranChicago Los Angl'.toUpperCase(), header_split_flaps);
+	}
+	function drawLoop(split_flaps) {
+		setTimeout(function() {
+			var current_split_flap;
+			for (current_split_flap in split_flaps) {
+				split_flaps[current_split_flap].tick();
+			}
+			var current_frame = (new Date).getTime();
+			var elapsed_millis = current_frame - last_frame;
+			var frame_rate = 1000 / elapsed_millis;
+			last_frame = current_frame;
+			drawLoop(split_flaps);
+		}, 30);
+	}
+	function updateDisplay(message, split_flaps) {
+		var index;
+		for (index=0; (index < split_flaps.length) && (index < message.length); index++) {
+			var split_flap = split_flaps[index];
+			var delay = Math.floor(Math.random()*300 + 50 * index);
+			var goal = split_flap.symbol_set.indexOfSymbol(message[index]);
+			if (goal != null) {
+				setTimeout(function(sf, goal) {
+					sf.flipToSymbolIndex(goal);
+				}, delay, split_flap, goal);
+			}
+			else {
+				split_flap.flipToSymbolIndex(0);
+			}
+		}
+	}
+	
+	function SymbolSet(symbols, bounds, font, container) {
+		this.symbols = symbols;
+		this.bounds = bounds;
+		
+		this.symbol_columns = Math.min(symbols.length, Math.floor(1000 / bounds['width']));
+		this.symbol_rows = 1 + Math.floor(symbols.length / this.symbol_columns);
+		
+		this.symbols_canvas = document.createElement('canvas');
+	    this.symbols_canvas.setAttribute('width', this.symbol_columns * bounds['width']); 
+		this.symbols_canvas.setAttribute('height', this.symbol_rows * bounds['height']);
+		container.appendChild(this.symbols_canvas);
+		var context = this.symbols_canvas.getContext('2d');
+		
+		context.fillStyle = FLAP_TEXT_STYLE;
+		context.strokeStyle = FLAP_TEXT_STYLE;
+		context.font = font;
+		context.textAligh = "center";
+		context.textBaseline = "top";
+		var x = 0;
+		var y = 0;
+		var symbol;
+		for(symbol = 0; symbol < this.symbols.length; symbol++) {
+			context.fillText(this.symbols[symbol], x, y);
+			x += bounds['width'];
+			if (x >= bounds['width'] * this.symbol_columns) {
+				x = 0;
+				y += bounds['height'];
+			}
+		}
+	}
+	SymbolSet.prototype.drawSymbol = function(symbol_index, context, display_width, display_height) {
+		context.save();
+
+		//crop the symbol from the cache canvas
+		var sx = this.bounds['width'] * (symbol_index % this.symbol_columns);
+		var sy = this.bounds['height'] * Math.floor(symbol_index / this.symbol_columns);
+		var sw = this.bounds['width'];
+		var sh = this.bounds['height'];
+
+		//center symbol in the display area
+		context.textBaseline = "top";
+		var dx = Math.max(0, (display_width - sw)/2);
+		var dy = Math.max(0, (display_height - sh)/2);
+		var dw = sw;
+		var dh = sh;
+
+		context.drawImage(this.symbols_canvas, sx, sy, sw, sh, dx, dy, dw, dh);
+		context.restore();
+	}
+	SymbolSet.prototype.subsequentSymbolIndex = function(symbol_index) {
+		if (symbol_index >= this.symbols.length ) {
+			return 0;
+		}
+		return symbol_index + 1;
+	}
+	SymbolSet.prototype.indexOfSymbol = function(symbol) {
+		var index;
+		for (index = 0; index < this.symbols.length; index++) {
+			if (this.symbols[index] == symbol) {
+				return index;
+			}
+		}
+		return null;
+	}
+	SymbolSet.ASCIICharacters = function() {
+		characters = [];
+		var char_code;
+		for(char_code = 0x0020; char_code <= 0x007E; char_code++) {
+			characters.push(String.fromCharCode(char_code));
+		}
+		return characters;
+	}
+	SymbolSet.ASCIIUpperCaseCharacters = function() {
+		characters = [];
+		var char_code;
+		for(char_code = 0x0041; char_code <= 0x005A; char_code++) {
+			characters.push(String.fromCharCode(char_code));
+		}
+		return characters;
+	}
+	SymbolSet.UTF8Characters = function() {
+		characters = [];
+		var char_code;
+		for(char_code = 0x0020; char_code <= 0x007E; char_code++) {
+			characters.push(String.fromCharCode(char_code));
+		}
+		for(char_code = 0x00A0; char_code <= 0x00FF; char_code++) {
+			characters.push(String.fromCharCode(char_code));
+		}
+		return characters;
+	}
+	SymbolSet.CapsNumericPunctuationCharacters = function() {
+		characters = [];
+		characters.push(String.fromCharCode(0x0020));
+		var char_code;
+		for(char_code = 0x0041; char_code <= 0x005A; char_code++) {
+			characters.push(String.fromCharCode(char_code));
+		}
+		for(char_code = 0x0030; char_code <= 0x003A; char_code++) {
+			characters.push(String.fromCharCode(char_code));
+		}
+		return characters;
+	}
+	
+	function SplitFlap(symbol_set, context, bounds) {
+		this.symbol_set = symbol_set;
+		this.current_symbol_index = 0;
+		this.goal_symbol_index = 0;
+		this.context = context;
+		this.bounds = bounds;
+		this.animation_progress = 100;
+		this.flip_animation_duration = 1000;
+	}
+	SplitFlap.prototype.draw = function() {
+		this.context.save();
+		this.context.fillStyle = FLAP_TEXT_STYLE;
+		this.context.strokeStyle = FLAP_TEXT_STYLE;
+		this.context.transform(1,0, 0,1, this.bounds['x'],this.bounds['y']);
+		this.drawTopFlap();
+		this.context.transform(1,0, 0,1, 0,this.bounds['height']/2);
+		this.drawBottomFlap();
+		this.context.restore();
+	}
+	SplitFlap.prototype.drawTopFlap = function() {
+		var drawFlapOutline = function(context, bounds) {
+			corner_radius = Math.min(Math.min(10, bounds['width']), bounds['height']);
+			context.beginPath();
+			context.moveTo(0, bounds['height']/2);
+			context.lineTo(0, corner_radius);
+			context.bezierCurveTo(0, 0, 0, 0, corner_radius, 0);
+			context.lineTo(bounds['width'] - corner_radius, 0);
+			context.bezierCurveTo(bounds['width'], 0, bounds['width'], 0, bounds['width'], corner_radius);
+			context.lineTo(bounds['width'], bounds['height']/2);
+			context.closePath();
+			
+			context.fillStyle = FLAP_BACKGROUND_STYLE;
+			context.strokeStyle = FLAP_BORDER_STYLE;
+			context.fill();
+			context.stroke();
+			context.clip();
+		}
+		
+		this.context.save();
+		this.context.clearRect(0, 0, this.bounds['width'], this.bounds['height']/2);
+		
+		if (this.animation_progress > 0) {
+			this.context.save();
+			drawFlapOutline(this.context, this.bounds);
+			this.context.transform(1,0, 0,1, 0,this.bounds['height'] / 2 - this.symbol_set.bounds['height'] / 2);
+			this.symbol_set.drawSymbol(this.symbol_set.subsequentSymbolIndex(this.current_symbol_index), this.context, this.bounds['width'], this.bounds['height']/2);
+			this.context.restore();
+		}
+		
+		if (this.animation_progress <= 50) {
+			this.context.save();
+			var vertical_scale_factor = (50-this.animation_progress)/50.0
+			this.context.transform(1,0, 0,vertical_scale_factor, 0,this.bounds['height']/2 * (1-vertical_scale_factor));
+			drawFlapOutline(this.context, this.bounds);
+			this.context.transform(1,0, 0,1, 0,this.bounds['height'] / 2 - this.symbol_set.bounds['height'] / 2);
+			this.symbol_set.drawSymbol(this.current_symbol_index, this.context, this.bounds['width'], this.bounds['height']/2);
+			this.context.restore();
+		}
+		this.context.restore();
+	}
+	SplitFlap.prototype.drawBottomFlap = function() {
+		var drawFlapOutline = function(context, bounds) {
+			corner_radius = Math.min(Math.min(10, bounds['width']), bounds['height']);
+			context.beginPath();
+			context.moveTo(0, 0);
+			context.lineTo(bounds['width'], 0);
+			context.lineTo(bounds['width'], bounds['height']/2 - corner_radius);
+			context.bezierCurveTo(bounds['width'], bounds['height']/2, bounds['width'], bounds['height']/2, bounds['width'] - corner_radius, bounds['height']/2);
+			context.lineTo(corner_radius, bounds['height']/2);
+			context.bezierCurveTo(0, bounds['height']/2, 0, bounds['height']/2, 0, bounds['height']/2 - corner_radius);
+			context.closePath();
+			
+			context.fillStyle = FLAP_BACKGROUND_STYLE;
+			context.strokeStyle = FLAP_BORDER_STYLE;
+			context.fill();
+			context.stroke();
+			context.clip();
+		}
+		
+		this.context.save();
+		this.context.clearRect(0, 0, this.bounds['width'], this.bounds['height']/2);
+
+		// DEBUG: uncomment to offset the top and bottom flaps
+		// this.context.transform(1,0, 0,1, 0,this.bounds['height']);		
+
+		this.context.save();
+		drawFlapOutline(this.context, this.bounds);
+		this.context.transform(1,0, 0,1, 0,-(this.symbol_set.bounds['height']/2));
+		this.symbol_set.drawSymbol(this.current_symbol_index, this.context, this.bounds['width'], this.bounds['height']/2);
+		this.context.restore();
+
+		
+		if (this.animation_progress >= 50) {
+			this.context.save();
+			var vertical_scale_factor = (this.animation_progress - 50)/50.0;
+			this.context.transform(1,0, 0,vertical_scale_factor, 0,0);
+			drawFlapOutline(this.context, this.bounds);
+			this.context.transform(1,0, 0,1, 0,-(this.symbol_set.bounds['height']/2));
+			this.symbol_set.drawSymbol(this.symbol_set.subsequentSymbolIndex(this.current_symbol_index), this.context, this.bounds['width'], this.bounds['height']/2);
+			this.context.restore();
+		}
+		
+		this.context.restore();
+	}
+	SplitFlap.prototype.jumpToSymbolIndex = function(symbol_index) {
+		this.current_symbol_index = symbol_index;
+		this.goal_symbol_index = symbol_index;
+		this.animation_progress = 0;
+		this.draw();
+	}
+	SplitFlap.prototype.flipToSymbolIndex = function(symbol_index) {
+		this.goal_symbol_index = symbol_index;
+		this.animation_progress = 0;
+		this.tick();
+	}
+	SplitFlap.prototype.tick = function(elapsed_millis) {
+		if (this.current_symbol_index != this.goal_symbol_index) {
+			this.animation_progress = (this.animation_progress + ANIMATION_INCREMENT);
+			if (this.animation_progress > 100) {
+				this.current_symbol_index = this.symbol_set.subsequentSymbolIndex(this.current_symbol_index);
+				this.animation_progress = 0;
+			}
+			this.draw();
+		}
+	}
+	</script>
+</head>
+
+<body onload="init()">
+	<canvas id="display" width="1000" height="480"></canvas>
+	<div id="caches"></div>
+	<div id="credits">
+		<a href="#"></a>
+	</div>
+</body>
+
+</html>
