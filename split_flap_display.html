@@ -34,7 +34,7 @@
 		
 		var cache_container = el('caches');
 		
-		var display_strings = SymbolSet.ASCIICharacters();
+		var display_strings = SymbolSet.UTF8Characters();
 		var symbol_bounds = {'width': 0, 'height': 40};
 		var display_string;
 		for(display_string = 0; display_string < display_strings.length; display_string++) {
@@ -46,11 +46,12 @@
 		var split_flaps = [];
 		var symbol_index;
 		var flap_width = symbol_bounds['width'] + 20;
-		var flap_height = symbol_bounds['height'] + 30;
+		var flap_height = symbol_bounds['height'];
+		var flaps_per_row = 16;
 		for (symbol_index=0; symbol_index < symbol_set.symbols.length; symbol_index++) {
 			split_flaps.push(new SplitFlap(symbol_set, context, {
-				'x':50 + (symbol_index % 16) * (flap_width + 10), 
-				'y':50 + Math.floor(symbol_index / 16) * (flap_height + 20), 
+				'x':20 + (symbol_index % flaps_per_row) * (flap_width + 2), 
+				'y':20 + Math.floor(symbol_index / flaps_per_row) * (flap_height + 10), 
 				'width':flap_width, 
 				'height':flap_height
 			}));
@@ -121,8 +122,8 @@
 
 		//center symbol in the display area
 		context.textBaseline = "top";
-		var dx = (display_width - sw)/2;
-		var dy = (display_height - sh)/2;
+		var dx = Math.max(0, (display_width - sw)/2);
+		var dy = Math.max(0, (display_height - sh)/2);
 		var dw = sw;
 		var dh = sh;
 
@@ -207,7 +208,7 @@
 		if (this.animation_progress > 0) {
 			this.context.save();
 			drawFlapOutline(this.context, this.bounds);
-			this.context.transform(1,0, 0,1, 0,this.bounds['height'] / 4);
+			this.context.transform(1,0, 0,1, 0,this.bounds['height'] / 2 - this.symbol_set.bounds['height'] / 2);
 			this.symbol_set.drawSymbol(this.symbol_set.subsequentSymbolIndex(this.current_symbol_index), this.context, this.bounds['width'], this.bounds['height']/2);
 			this.context.restore();
 		}
@@ -217,7 +218,7 @@
 			var vertical_scale_factor = (50-this.animation_progress)/50.0
 			this.context.transform(1,0, 0,vertical_scale_factor, 0,this.bounds['height']/2 * (1-vertical_scale_factor));
 			drawFlapOutline(this.context, this.bounds);
-			this.context.transform(1,0, 0,1, 0,this.bounds['height'] / 4);
+			this.context.transform(1,0, 0,1, 0,this.bounds['height'] / 2 - this.symbol_set.bounds['height'] / 2);
 			this.symbol_set.drawSymbol(this.current_symbol_index, this.context, this.bounds['width'], this.bounds['height']/2);
 			this.context.restore();
 		}
@@ -250,7 +251,7 @@
 
 		this.context.save();
 		drawFlapOutline(this.context, this.bounds);
-		this.context.transform(1,0, 0,1, 0,-this.bounds['height'] / 4);
+		this.context.transform(1,0, 0,1, 0,-(this.symbol_set.bounds['height']/2));
 		this.symbol_set.drawSymbol(this.current_symbol_index, this.context, this.bounds['width'], this.bounds['height']/2);
 		this.context.restore();
 
@@ -260,7 +261,7 @@
 			var vertical_scale_factor = (this.animation_progress - 50)/50.0;
 			this.context.transform(1,0, 0,vertical_scale_factor, 0,0);
 			drawFlapOutline(this.context, this.bounds);
-			this.context.transform(1,0, 0,1, 0,-this.bounds['height'] / 4);
+			this.context.transform(1,0, 0,1, 0,-(this.symbol_set.bounds['height']/2));
 			this.symbol_set.drawSymbol(this.symbol_set.subsequentSymbolIndex(this.current_symbol_index), this.context, this.bounds['width'], this.bounds['height']/2);
 			this.context.restore();
 		}
